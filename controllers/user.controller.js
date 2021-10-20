@@ -1,7 +1,54 @@
 const User = require('../models/user.model.js');
+var jwt = require('jsonwebtoken');
+var bcrypt = require('bcryptjs');
+var config = require('./../config/database.config');
+
+
+
+
+
+exports.login = async (req,res) => {
+    
+  // Our login logic starts here
+  try {
+    // Get user input
+    const { name, password } = req.body;
+    // Validate user input
+    if (!(name && password)) {
+      return res.status(400).json("All input is required");
+    }
+
+    // Validate if user exist in our database
+    const user = await User.findOne({ name },{_id:0})
+    const passwordCompared = await bcrypt.compare(password, user.password)
+
+    console.log("passwordCompared",passwordCompared)
+    if (user && passwordCompared) {
+    //   Create token
+      var token = jwt.sign({ id: user._id }, config.secret, {
+        expiresIn: '2h' // expires in 2 hours
+      });
+
+      // save user token
+      // user
+      return res.status(200).send({user,token});
+    }
+
+    res.status(400).send("Invalid Credentials");
+
+  } catch (err) {
+      console.log("eeeee",err)
+    res.status(400).send("error log in");
+
+    console.log(err);
+  }
+}
+
+
+
 
 // Create and Save a new user
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
 
 
     const {name,description,age,gender,isActive,status,password,image} = req.body;
@@ -12,6 +59,9 @@ exports.create = (req, res) => {
         });
     }
 
+
+    encryptedPassword = await bcrypt.hash(password, 10);
+
     // Create a user
     const user = new User({
         name: req.body.name || "Untitled user", 
@@ -20,14 +70,20 @@ exports.create = (req, res) => {
         gender,
         isActive,
         status,
-        password,
+        encryptedPassword,
         image
     });
 
     // Save user in the database
     user.save()
     .then(data => {
-        res.send(data);
+        var token = jwt.sign({ id: user._id }, config.secret, {
+            expiresIn: '2h' // expires in 2 hours
+          });
+          data['token'] = token
+        // res.send(data);
+        res.status(200).send({ data });
+
     }).catch(err => {
         res.status(500).send({
             message: err.message || "Some error occurred while creating the user."

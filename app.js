@@ -39,6 +39,8 @@ mongoose.connect(dbConfig.url, {
 });
 
 require('./api-routes/user.routes.js')(app);
+require('./api-routes/post.routes.js')(app);
+
 
 
 // listen for requests
